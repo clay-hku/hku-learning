@@ -1,0 +1,385 @@
+---
+title: "HW1"
+author: "HAO ZIXIN"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Question 1: Confidence intervals
+
+## (a) 
+
+```{r}
+n <- 45 
+x_mean <- 920  
+sigma <- 36 
+z <- 1.645  
+
+# confidence interval
+lower_bound <- x_mean - z*(sigma/sqrt(n))
+upper_bound <- x_mean + z*(sigma/sqrt(n))
+
+# Final result
+cat("90% Confidence Interval for population mean:", lower_bound, "to", upper_bound, "\n")
+```
+
+## (b) 
+### i. ii. iii.
+```{r}
+## data
+n <- 60  
+x_mean <- 120  
+sigma <- 32
+z_90 <- 1.645 
+z_95 <- 1.96
+z_99 <- 2.576
+### i.
+margin_of_error_90 <- z_90 * (sigma / sqrt(n))
+
+lower_bound_90 <- x_mean - margin_of_error_90
+upper_bound_90 <- x_mean + margin_of_error_90
+
+cat("i.")
+cat("90% Confidence Interval:", lower_bound_90, "to", upper_bound_90, "\n")
+### ii.
+margin_of_error_95 <- z_95 * (sigma / sqrt(n))
+
+lower_bound_95 <- x_mean - margin_of_error_95
+upper_bound_95 <- x_mean + margin_of_error_95
+cat("ii.")
+cat("95% Confidence Interval:", lower_bound_95, "to", upper_bound_95, "\n")
+### iii.
+margin_of_error_99 <- z_99 * (sigma / sqrt(n)) 
+
+lower_bound_99 <- x_mean - margin_of_error_99
+upper_bound_99 <- x_mean + margin_of_error_99
+cat("iv.")
+cat("99% Confidence Interval:", lower_bound_99, "to", upper_bound_99, "\n")
+```
+## (b) 
+### iv.
+Increasing the confidence level, the margin of error increases, leading to wider confidence intervals.
+
+## (c)
+
+```{r}
+# data
+n <- 120  
+successes <- 90  
+p_hat <- successes / n  
+z_95 <- 1.96
+sigma <- p_hat * (1 - p_hat)
+
+# Margin of error
+margin_of_error_proportion <- z_95 * (sqrt(sigma) / n)
+
+# Confidence interval
+lower_bound_prop <- p_hat - margin_of_error_proportion
+upper_bound_prop <- p_hat + margin_of_error_proportion
+
+# Print the confidence interval using print()
+cat("95% Confidence Interval for population proportion:", lower_bound_prop, "to", upper_bound_prop)
+```
+
+
+# Question 2: Hypothesis Testing
+
+## (a)
+### i.
+**Assumption**:μ = the average number of cups of coffee consumed per day by Hong Kong residents.  
+**Null hypothesis(H_0):** $μ = 2$  
+**Alternative Hypothesis (H_1):** $μ ≠ 2$  
+
+### ii.
+**Assumption**:μ = The average SAT score for entering freshmen at UC Berkeley.   
+**Null hypothesis(H_0):** $μ = 1560$  
+**Alternative Hypothesis (H_1):** $μ > 1560$    
+
+## (b)
+### i.
+**Assumption**:μ = average delivery time.  
+**Null hypothesis(H_0):** $μ \leq 2$  
+**Alternative Hypothesis (H_1):** $μ > 2$  
+
+### ii.
+**Type I error**  
+I draw a conclusion that delivery is longer than two days, which means p-value is less or equal than 0.05(in general). As a result, I reject the null hypothesis by mistake, and this is the situation that when Type I Error occurs.  
+
+### iii.  
+Neither a Type I error nor a Type II error occurs.  
+If Type I error occurs, I should incorrectly reject the null hypothesis. And if Type II error occurs, I should accept the null hypothesis, although it is not true. Now my conclusion is correct, so there is no error.  
+
+## (c)
+
+### i.
+**Assumption**:μ = the mean age of her customer.   
+**Null hypothesis(H_0):** $μ \leq 42$  
+**Alternative Hypothesis (H_1):** $μ > 42$  
+
+### ii. iii. iv.
+With population σ known, I choose Z test as my function.
+```{r}
+# data
+n <- 260
+x_mean <- 42.6
+sigma <- 5
+u <- 42
+
+# Z test
+z <- (x_mean - u) / (sigma / sqrt(n))
+
+p_value <- 1 - pnorm(z)
+cat("ii.")
+cat("p_value is",p_value)
+for (a in c(0.05, 0.01)){
+  if(a == 0.05){cat("iii.\n")}
+  else{cat("iv.\n")}
+  if (p_value <= a) {
+  cat("p_value:",p_value," less or equal than ",a,", so we reject the null hypothesis at the ",a*100,"% signficance level.
+      So, the conclusion is that we are ",100-a*100,"% confident that the mean age of the customer is over 42.\n",sep="")
+} else {
+  cat("p_value:",p_value," greater or equal than ",a,", so we fail to reject the null hypothesis at the ",a*100," signficance level.
+      So, the conclusion is that we are not ",100-a*100,"% confident that the mean age of the customer is over 42.\n",sep="")
+}
+}
+```
+We **believe** that the mean age is over 42 at **5%** significance level.  
+We **do not believe** that the mean age is over 42 at **1%** significance level.  
+
+# Question 3: Dummy Variable 
+
+If Origin = "Interval", Origin[Internal]=1, Origin[External]=-1. 
+If Origin = "External", Origin[Internal]=0, Origin[External]=1.  
+Assumed that Origin[Internal]=In, Origin[External]=Ex.  
+As a result, $2In + Ex= 1$, which means that $Ex = 1 - 2In$.  
+$$
+Rating = \alpha_0+\alpha_1(1-2In)+\alpha_2Salary+\alpha_3(1-2In)Salary+\epsilon
+$$
+Simlified:
+$$
+Rating = (\alpha_0+\alpha_1)+(-2\alpha_1)In+(\alpha_2-\alpha_3)Salary+(-2\alpha_3)In*Salary+\epsilon
+$$
+
+Also:
+$$
+Rating = \beta_0+\beta_1In+\beta_2Salary+\beta_3In*Salary+\epsilon
+$$
+
+So:  
+$\beta_0=(\alpha_0+\alpha_1)$  
+$\beta_1=-2\alpha_1$  
+$\beta_2=(\alpha_2-\alpha_3)$  
+$\beta_3=-2\alpha_3$  
+
+# Question 4: Categorical Variable in Linear Regression 
+## (a)
+**Response Variable:** Time for Run.  
+**predictor Variables:** Run Size and Manager.  
+
+## (b)
+**Managerb** and **Managerc**.  
+**Managerb:** Equals 1 if the manager is b, and 0 otherwise.  
+**Managerc:** Equals 1 if the manager is c, and 0 otherwise.  
+
+## (c)
+
+```{r}
+# get data 
+data <- read.csv("ProdTime.dat")
+head(data)
+# regression
+reg <- lm(Time.for.Run ~ Run.Size + Manager, data = data)
+summary(reg)
+```
+**Model:**  
+$$
+Time = \beta_0+\beta_1Size+\beta_2Managerb+\beta_3Managerc+\epsilon
+$$
+**Statement:**  
+The coefficients for Managerb and Managerc tell that the average difference in the time for the runs completed under Managers B and C compared to Manager A.(different intercepts)  
+Both Managerb and Managerc are negative, which means that compared to Manager A, Manager B and C perform greater, for their Time for Run value are lower.  
+Negative coefficients mean that when manager turn out to be B, time would decrease 53.06 compared to the condition that manager is A. For manager C, the decreasement value is 62.17, even greater than B.  
+**Reason:**  
+When manager is A, both Managerb and Managerc would be zero.So the model is simple linear regression for time and run size for manager A.$Time = \beta_0+\beta_1size+\epsilon$  
+When manager is B, Managerb would be one while Managerc maintains zero. So the model becomes $Time = \beta_0+\beta_1size+\beta_2+\epsilon$. As a result, the $\beta_2$ turns out to be the "effect of Managerb", which means that when manager becomes B, the Time would change $\beta_2$ unit.  
+And the same condition occurs when we take manage C for analysis.  
+**Significant:**  
+All of the coefficients are significant, for their p_value is very small and less than 0.001.  
+
+## (d)
+```{r}
+# get data 
+data <- read.csv("ProdTime.dat")
+head(data)
+# regression
+reg <- lm(Time.for.Run ~ Run.Size * Manager, data = data)
+summary(reg)
+```
+**Model:**  
+$$
+Time = \beta_0+\beta_1Size+\beta_2Managerb+\beta_3Managerc+\beta_4Size*Managerb+\beta_5Size*Managerc +\epsilon
+$$
+**Statement:**
+The interaction coefficients would tell that how much the relationship between Run Size and Time for Run changes when switching from one manager to another.  
+To be specific, the model explains there is different slope when switching managers. And the intercepts are still different, beacuse we have not removed Managerb and Managerc. 
+
+**reason:**  
+When manager is A, both Managerb and Managerc would be zero.So the model becomes $Time = \beta_0+\beta_1size+\epsilon$  
+When manager is B, Managerb would be one while Managerc maintains zero. So the model becomes $Time = \beta_0+(\beta_1+\beta_4)size+\beta_2+\epsilon$. As a result, we can tell that Time have a new relationship with size, which is$\beta_1+\beta4$, model'slope changes.
+And the same condition occurs when we take manage C for analysis.  
+
+**significant:**
+Actually the interactions of "c" is not significant at the 5% significance level, beacuse its p_value is too large.For interactions of "b", it is significant.
+
+The interactions lead to Managerb becoming insignificant, due to the collinearity.
+
+### (e)
+
+(c)  
+$R^2=0.8131$  $adj\;R^2=0.8031$  
+(d)  
+$R^2=0.8353$  $adj\;R^2=0.82$  
+
+According to adj R-squared, we should choose model(d). We should not take R-squared into consideration, because it does not work when comparing models with different model size.  
+However, there is another fact should be considered that model(d)'s interactions of Managerc is not significant. So there is flaw in model(d) even though it has higher adj R-Squared. In my opinion, model(c) could be better. By the way, the difference of adj R-Squared between the two model is small.
+
+# Question 5: Linear Regression 
+
+## (a)
+```{r}
+library(ISLR)
+library(ISLR2)
+d = data("Auto")
+summary(Auto)
+pairs(Auto)
+```
+MPG:  
+Min: 9.00 — The lowest fuel efficiency recorded in the dataset.  
+1st Qu: 17.00 — 25% of the cars have an MPG of 17 or lower.  
+Median: 22.75 — The median MPG suggests that half of the cars have a fuel efficiency less than or equal to 22.75.  
+Mean: 23.45 — On average, cars in this dataset have an MPG of about 23.45.  
+Max: 46.60 — The most fuel-efficient car achieves 46.6 MPG.  
+
+##(b)
+```{r}
+plot(Auto$year, Auto$mpg, main="MPG vs. Year", xlab="Year", ylab="MPG")
+```
+
+As year increase, MPG slightly grows.
+
+##(c)
+```{r}
+model1 <- lm(mpg ~ year, data = Auto)
+summary(model1)
+```
+
+The p_value of year pretty small, so it is significant at the 0.05 level and even at the 0.01 level.  
+When year increase one unit, MPG would increase by 1.23 according to the model.
+
+##(d)
+
+```{r}
+
+model2 <- lm(mpg ~ year + horsepower, data = Auto)
+summary(model2)
+
+par(mfrow=c(2,2)) 
+plot(model2)
+```  
+
+Year is still significant at the 0.05 level. When year increase one unit, MPG would increase by 0.66 according to the model. The value decreases after introducing horsepower into the model.
+
+## (e)
+```{r}
+summary(model1)
+summary(model2)
+conf_intervals1 <- confint(model1, level = 0.95)
+print(conf_intervals1)
+conf_intervals2 <- confint(model2, level = 0.95)
+print(conf_intervals2)
+```
+
+The 95% CI in model2 seems to be narrower than in model1. This is because we introduce horsepower as an predictor, and the model explains MPG better than before.  
+When we introduce horsepower into the model, it seems that the year effect becomes lower. Actually, the reason is that some of the increase in MPG attributed to the year, which is calculated by model1, might be related to other factors, like horsepower. So, when we consider both factors together, we see that the year effect is weaken.
+
+## (f)
+```{r}
+model3 <- lm(mpg ~ year * horsepower, data = Auto)
+summary(model3)
+```
+
+Yes, Year is still significant at the 0.05 level.  
+The year coefficient (2.19) indicates that for each additional year, mpg increases by approximately 2.19, assuming horsepower is held constant.  
+The significant interaction effect means that the impact of year on MPG changes when horsepower changes. To be specific, while both year and horsepower positively contribute to mpg, the positive effect of year becomes slightly weaker as horsepower increases.
+
+## (g)
+```{r}
+model_continuous <- lm(mpg ~ horsepower + cylinders, data = ISLR::Auto)
+summary(model_continuous)
+```
+
+The p_value of cylinders is less than 0.01, so it is significant at the 0.01 level.  
+The negative coefficient of cylinders(-1.92) means that there is a decrease of mpg when cylinders increase, holding horsepower constant.
+
+## (h)
+```{r}
+model_categorical <- lm(mpg ~ horsepower + as.factor(cylinders), data = ISLR::Auto)
+summary(model_categorical)
+```
+
+Only as.factor(cylinders)4 is significant.The coefficients for 5, 6, and 8 cylinders are not significant at the 0.01 level (p-values of 0.12120, 0.87501, and 0.82716, respectively).  
+Thus, only cars with 4 cylinders have a significantly different mpg than those with 3 cylinders. The exact effect is 6.57, which means that cars with 4 cylinders tend to have an approximately 6.57 higher mpg than those with 3 cylinders. As for others, the result is not statistically significant, so we could not say that there is any effect.
+
+## (i)
+
+```{r}
+adjusted_r_squared_continuous <- summary(model_continuous)$adj.r.squared
+adjusted_r_squared_categorical <- summary(model_categorical)$adj.r.squared
+
+cat("Adjusted R-squared (Continuous):", adjusted_r_squared_continuous, "\n")
+cat("Adjusted R-squared (Categorical):", adjusted_r_squared_categorical, "\n")
+```
+
+**Continuous:** The interpretation of the coefficient indicates how mpg changes with each additional cylinder.  
+**Categorical:** Each cylinder category has its own effect, allowing for more nuanced interpretation of how different cylinder counts affect fuel efficiency.  
+The categorical model has a higher adj R-Squared (0.7008) compared to the continuous model (0.6551). So, the former one capture the effects more accurately, explain more variability and predict MPG more precisely.  
+
+
+# Question 6: Model Selection
+
+```{r}
+library(ISLR)
+library(leaps)
+summary(Auto)
+Auto$name <- NULL
+model_all <- regsubsets(mpg ~ . , data = Auto, nvmax = 7, method = "exhaustive")
+summary(model_all)
+
+best_adjr2_model <- which.max(summary(model_all)$adjr2)
+best_cp_model <- which.min(summary(model_all)$cp)
+best_bic_model <- which.min(summary(model_all)$bic)
+
+predictors_adjr2 <- names(coef(model_all, best_adjr2_model))
+predictors_cp <- names(coef(model_all, best_cp_model))
+predictors_bic <- names(coef(model_all, best_bic_model))
+
+predictors_adjr2
+predictors_cp
+predictors_bic
+
+formula_adjr2 <- as.formula(paste("mpg ~", paste(predictors_adjr2[-1], collapse = " + ")))
+model_adjr2 <- lm(formula_adjr2, data = Auto)
+summary(model_adjr2)
+
+formula_cp <- as.formula(paste("mpg ~", paste(predictors_cp[-1], collapse = " + ")))
+model_cp <- lm(formula_cp, data = Auto)
+summary(model_cp)
+
+formula_bic <- as.formula(paste("mpg ~", paste(predictors_bic[-1], collapse = " + ")))
+model_bic <- lm(formula_bic, data = Auto)
+summary(model_bic)
+```
+
+Name is useless when predicting MPG, so I remove it from the very beginning.  
+**Reasons:**  
+The Bayesian Information Criterion provides a balance between model fit and complexity. A lower BIC indicates a better model.  
+BIC places a heavier penalty on models with many variables, which providing a more balanced model between test error and training error. So, I decide to choose model_bic. By the way, the adj R-squared of the model is 0.816, which is relatively high. So this model also predicts MPG very well.
