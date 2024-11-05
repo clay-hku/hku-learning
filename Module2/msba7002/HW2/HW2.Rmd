@@ -1,0 +1,365 @@
+---
+title: "HW2"
+author: "clayhku"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+# Question 1: Crime Data
+
+```{r}
+library(caret)
+library(Metrics)
+library(glmnet)
+library(leaps)
+
+# load data
+crime <- read.csv("CrimeData_sub.csv", stringsAsFactors = F, na.strings = c("?")) 
+crime <- na.omit(crime) 
+
+# divide data into training data and testing data
+set.seed(123)
+trainIndex <- createDataPartition(crime$violentcrimes.perpop, p = 0.8, list = FALSE)
+trainData <- crime[trainIndex, ]
+testData <- crime[-trainIndex, ]
+```
+
+## Q1.1
+
+```{r}
+# Run the OLS Model
+model <- lm(violentcrimes.perpop ~ ., data = trainData)
+trainPredictions <- predict(model, trainData)
+# Calculate MSE & R-squared for training data
+trainMSE <- mean((trainData$violentcrimes.perpop - trainPredictions)^2)
+trainR2 <- summary(model)$r.squared
+# Calculate MSE & R-squared for training data
+testPredictions <- predict(model, testData)
+testMSE <- mean((testData$violentcrimes.perpop - testPredictions)^2)
+SS_total <- sum((testData$violentcrimes.perpop - mean(testData$violentcrimes.perpop))^2)
+SS_residual <- sum((testData$violentcrimes.perpop - testPredictions)^2)
+testR2 <- 1 - (SS_residual / SS_total)
+# Results
+cat("Training MSE:", trainMSE)
+cat("Training R-squared:", trainR2)
+cat("Testing MSE:", testMSE)
+cat("Testing R-squared:", testR2)
+```
+
+The training MSE is `` `r format(trainMSE, scientific = FALSE)` `` while testing MSE is `` `r format(testMSE, scientific = FALSE)` ``.  
+The Training R-squared is `` `r trainR2` `` while testing R-squared is `` `r testR2` ``.  
+We can see that there is big difference between training and testing, which includes that the model fail to fit the data very well.  
+
+## Q1.2
+
+### i.
+```{r}
+x_train <- model.matrix(violentcrimes.perpop ~ ., trainData)[, -1]
+y_train <- trainData$violentcrimes.perpop
+
+# 5-folds CV
+cv_lasso <- cv.glmnet(x_train, y_train, alpha = 1, nfolds = 5)
+lambda_min <- cv_lasso$lambda.min
+# lasso regression
+lasso_model <- glmnet(x_train, y_train, alpha = 1, lambda = lambda_min)
+
+coefficients = coef(lasso_model)
+index <- which(coefficients != 0)
+
+selected_variables <- rownames(coefficients)[index][-1]
+selected_variables
+```
+The `` `r selected_variables` `` are the names of variables selected by lasso model.  
+
+### ii.
+
+```{r}
+# ols regression based on variables selected by lasso
+ols_formula <- as.formula(paste("violentcrimes.perpop ~", paste(selected_variables, collapse = " + ")))
+ols_model <- lm(ols_formula, data = trainData)
+
+# Caculate MSE and R-squared
+trainPredictions_lasso_ols <- predict(ols_model, trainData)
+trainMSE_lasso_ols <- mean((trainData$violentcrimes.perpop - trainPredictions_lasso_ols)^2)
+trainR2_lasso_ols <- summary(ols_model)$r.squared
+
+
+testPredictions_lasso_ols <- predict(ols_model, testData)
+testMSE_lasso_ols <- mean((testData$violentcrimes.perpop - testPredictions_lasso_ols)^2)
+
+SS_total <- sum((testData$violentcrimes.perpop - mean(testData$violentcrimes.perpop))^2)
+SS_residual <- sum((testData$violentcrimes.perpop - testPredictions_lasso_ols)^2)
+testR2_lasso_ols <- 1 - (SS_residual / SS_total)
+
+cat("Training MSE:", trainMSE_lasso_ols)
+cat("Training R-squared:", trainR2_lasso_ols)
+cat("Testing MSE:", testMSE_lasso_ols)
+cat("Testing R-squared:", testR2_lasso_ols)
+```
+
+The training MSE is `` `r format(trainMSE_lasso_ols, scientific = FALSE)` `` while testing MSE is `` `r format(testMSE_lasso_ols, scientific = FALSE)` ``.  
+The Training R-squared is `` `r trainR2_lasso_ols` `` while testing R-squared is `` `r testR2_lasso_ols` ``.  
+We can see that there is no big difference between training group and testing group any more. Compared to Q1.1, the training MSE is lower and close to the testing MSE, and the training R-squared shows a very small gap with testing R-squared. The change above indicates that the model(select variables by lasso) fit the data better.  
+
+### iii.
+
+```{r}
+model_all <- regsubsets(ols_formula, data = trainData, method = "exhaustive")
+# use bic to select the best model
+best_bic_model <- which.min(summary(model_all)$bic)
+predictors_bic <- names(coef(model_all, best_bic_model))
+
+formula_bic <- as.formula(paste("violentcrimes.perpop ~", paste(predictors_bic[-1], collapse = " + ")))
+final_model <- lm(formula_bic, data = trainData)
+summary(final_model)
+print("Final Model:")
+print(formula_bic)
+```
+
+**PLAN:**  
+Use bic to select the best model, then remove the variables which p-values is higher than 0.05. BIC could balance the trade-off between model fit and complexity. And removing variables with high p-value improves the interpretability of the model.  
+Based on the analysis, the final model is given by the **formula_bic** above, which achieves the lowest BIC and includes only those coefficients with p-values less than 0.05.
+
+#### iv.
+
+```{r}
+# caculate final model MSE and R-squared
+trainPredictions_final <- predict(final_model, trainData)
+trainMSE_final <- mean((trainData$violentcrimes.perpop - trainPredictions_final)^2)
+trainR2_final <- summary(final_model)$r.squared
+
+testPredictions_final <- predict(final_model, testData)
+testMSE_final <- mean((testData$violentcrimes.perpop - testPredictions_final)^2)
+
+SS_total_final <- sum((testData$violentcrimes.perpop - mean(testData$violentcrimes.perpop))^2)
+SS_residual_final <- sum((testData$violentcrimes.perpop - testPredictions_final)^2)
+testR2_final <- 1 - (SS_residual_final / SS_total_final)
+
+cat("Final Model - Training MSE:", trainMSE_final, "\n")
+cat("Final Model - Training R-squared:", trainR2_final, "\n")
+cat("Final Model - Testing MSE:", testMSE_final, "\n")
+cat("Final Model - Testing R-squared:", testR2_final, "\n")
+
+
+
+# cv for ridge
+cv_ridge <- cv.glmnet(x_train, y_train, alpha = 0, nfolds = 5)
+lambda_ridge <- cv_ridge$lambda.min
+
+# ridge regression
+ridge_model <- glmnet(x_train, y_train, alpha = 0, lambda = lambda_ridge)
+
+# Caculate MSE and R-squared
+trainPredictions_ridge <- predict(ridge_model, s = lambda_ridge, newx = x_train)
+trainMSE_ridge <- mean((y_train - trainPredictions_ridge)^2)
+trainR2_ridge <- 1 - sum((y_train - trainPredictions_ridge)^2) / sum((y_train - mean(y_train))^2)
+
+
+x_test <- model.matrix(violentcrimes.perpop ~ ., testData)[, -1]
+testPredictions_ridge <- predict(ridge_model, s = lambda_ridge, newx = x_test)
+testMSE_ridge <- mean((testData$violentcrimes.perpop - testPredictions_ridge)^2)
+
+SS_total_ridge <- sum((testData$violentcrimes.perpop - mean(testData$violentcrimes.perpop ))^2)
+SS_residual_ridge <- sum((testData$violentcrimes.perpop - testPredictions_ridge)^2)
+testR2_ridge <- 1 - (SS_residual_ridge / SS_total_ridge)
+
+cat("Ridge Regression - Training MSE:", trainMSE_ridge)
+cat("Ridge Regression - Training R-squared:", trainR2_ridge)
+cat("Ridge Regression - Testing MSE:", testMSE_ridge)
+cat("Ridge Regression - Testing R-squared:", testR2_ridge)
+```
+
+The results of Ridge Regression also performs well, there is no big differenence between the final model and the ridge regression from the perspective of MSE or R-squared. However, ridge regression have no effect on model selection, which indicates that there could be too many variables in ridge regression model and may lead to overfitting problems when using other dataset.
+
+
+# Question 2: Default Data from ISLR 
+
+## Q2.1
+
+```{r}
+library(ISLR)
+data(Default)
+
+logistic_model <- glm(default ~ student, data = Default, family = "binomial")
+summary(logistic_model)
+```
+
+**Intercept:** This represents the log-odds of the default status of baseline.(Student: No)
+**Coefficient:** This represents the default status change of log-odds from non-student to student.  
+For X variable, the p-value is lower than 0.05, so it is significant.
+
+
+## Q2.2
+
+### i.
+```{r}
+full_model <- glm(default ~ ., data = Default, family = "binomial")
+summary(full_model)
+```
+
+### ii.
+```{r}
+library(pROC)
+pred_full <- predict(full_model, type = "response")
+pred_student <- predict(logistic_model, type = "response")
+actual <- Default$default
+roc_curve_full <- roc(actual, pred_full)
+roc_curve_student <- roc(actual, pred_student)
+
+plot(roc_curve_full, main = "ROC Curve of Full", col = "blue")
+plot(roc_curve_student, main = "ROC Curve of Student", col = "red")
+
+auc_value_full <- auc(roc_curve_full)
+auc_value_student <- auc(roc_curve_student)
+
+cat("AUC of Full model:", auc_value_full)
+cat("AUC of Student model:", auc_value_student)
+```
+
+From ROC curve, we can see that full model behaves better, because its ROC curve is closer to the top-left corner of the plot. The AUC shows the idea in a more specific way. The AUC of full model is `` `r auc_value_full` `` while the AUC of student model is `` `r auc_value_student` ``. We can find that the AUC of full model is much higher, which indicates a better model prediction.  
+
+### iii.
+
+```{r}
+pred_full_binary <- ifelse(pred_full > 0.5, "Yes", "No")
+confusion_matrix <- table(Predicted = pred_full_binary, Actual = Default$default)
+
+TP <- confusion_matrix["Yes", "Yes"]  # True Positives
+TN <- confusion_matrix["No", "No"]    # True Negatives
+FP <- confusion_matrix["Yes", "No"]   # False Positives
+FN <- confusion_matrix["No", "Yes"]   # False Negatives
+
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+FPR <- FP / (FP + TN)
+TPR <- TP / (TP + FN)
+
+cat("Results:")
+cat("Sensitivity (True Positive Rate):", sensitivity)
+cat("Specificity:", specificity)
+cat("False Positive Rate:", FPR)
+cat("True Positive Rate:", TPR)
+```
+
+# Question 3: Lost Sales
+
+```{r}
+# load data
+data <- read.table("lostsales.txt", header = TRUE, sep = ",")
+# Convert to factor
+data$Part.Type <- as.factor(data$Part.Type)
+data$Status <- as.factor(data$Status)
+
+# full model
+full_model <- glm(Status ~ ., data = data, family = binomial)
+summary(full_model)
+
+# use aic to pick best model
+aic_model <- step(full_model, direction = "both")
+coefs = coef(aic_model)
+summary(aic_model)
+```
+
+The Quote variable is statistically insignificant. The coefficient for Time.to.Delivery indicates that for each additional day of delivery time, the log(odds) decreases by approximately `` `r coefs[2]` ``. The coefficient for Part.TypeOE shows that when the part type is original equipment (OE) compared to the aftermarket (AM), the log(odds) decreases by approximately `` `r coefs[3]` ``.  
+
+From the results, it can be seen that whether customers place an order is closely related to delivery time and part type, but it is not associated with price. So, when the part type is AM and delivery time is small, customer will more likely to place an order.  
+
+
+# Question 4: Wine Quality
+
+## i.
+```{r}
+library(reshape2)
+library(corrplot)
+# load data
+data <- read.table("winequality-bc.txt", header = TRUE, sep = ",")
+
+data$Quality <- factor(data$Quality, 
+                       levels = c("Bad", "Just OK", "Good"), 
+                       ordered = TRUE)
+data$color <- as.factor(data$color)
+
+summary(data)
+str(data)
+
+# exploratory data analysis
+melted_data <- melt(data, id.vars = "Quality")
+
+ggplot(melted_data, aes(x = value, y = Quality)) +
+  geom_point() +
+  facet_wrap(~variable, scales = "free")
+ggplot(data, aes(x = Hold.Test)) +
+  geom_bar(aes(fill = Quality), position = "fill")
+ggplot(data, aes(x = color)) +
+  geom_bar(aes(fill = Quality), position = "fill")
+ggplot(data, aes(x = Crossvalidation)) +
+  geom_bar(aes(fill = Quality), position = "fill")
+
+cor_matrix <- cor(data[, -which(names(data) %in% c("Quality", "color"))])
+corrplot(cor_matrix, method = "color")
+
+# remove unreasonable variables
+data <- data[, -c(which(names(data) %in% c("quality", "free.sulfur.dioxide", "Crossvalidation", "Hold.Test", "color")))]
+
+# split training and testing data
+set.seed(123)
+train_indices <- sample(1:nrow(data), size = 0.8 * nrow(data))
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+```
+
+
+We can see from the pictures above that Crossvalidation , color and Hold.Test fail to show a significant relationship with Quaility, so they are removed. Also, quality is the specific number of Quality, so quality should be removed. What's more, we find that free.sulfur.dioxide and total.sulfur.dioxide are highly related, so we should keep one of them. For this model I keep total.sulfur.dioxide.
+
+
+## ii.
+```{r}
+# multinominal logistic regression
+library(nnet)
+library(MASS)
+multinom_model <- multinom(Quality ~ ., data = train_data)
+summary(multinom_model)
+
+# ordinal logistic regression
+ordinal_model <- polr(Quality ~ ., data = train_data, Hess = TRUE)
+summary(ordinal_model)
+
+# compare two model
+multinom_good <- coef(multinom_model)["Good",]
+ordinal_good <- coef(ordinal_model)
+
+multinom_good
+ordinal_good
+```
+
+### **Multinominal logistic regression:**  
+**Positive Influences:**  Good quality wines are positively associated with higher levels of fixed acidity, residual sugar, pH, sulphates and alcohol.  
+**Negative Influences:**  Good quality wines are negatively associated with higher levels of volatile acidity, citric acid, chlorides and density.  
+**Little Influences:** The coefficient of total sulfur dioxide is too small, showing little influences on good quality.
+
+### **Ordinal logistic regression:**  
+**Positive Influences:**  Good quality wines are positively associated with higher levels of fixed acidity, residual sugar, pH, sulphates and alcohol.  
+**Negative Influences:**  Good quality wines are negatively associated with higher levels of volatile acidity, citric acid, chlorides and density.
+**Little Influences:** The coefficient of total sulfur dioxide is too small, showing little influences on good quality.  
+
+### **Compare two models:**  
+Both models agree that lower levels of volatile acidity, citric acid and chlorides, along with higher levels of fixed acidity, residual sugar, sulphates, alcohol, and pH, are associated with better wine quality. Additionally, both models indicate that density has a strong negative correlation with quality. Also, both models find that total sulfur dioxide have a very limited influence. As a result, it seems that we can get similar conclusions through two models.  
+
+```{r}
+# compare two models with test data
+mlogit_pred <- as.factor(predict(multinom_model, newdata = test_data, type = "class"))
+polr_pred <- as.factor(predict(ordinal_model, newdata = test_data, type = "class"))
+
+same_pred_count <- sum(mlogit_pred == polr_pred)
+total_count <- nrow(test_data)
+diff_rate <- 1 - same_pred_count / total_count
+cat("different rate:", diff_rate)
+test_data$Quality <- factor(test_data$Quality, ordered=FALSE)
+mlogit_accuracy <- mean(mlogit_pred == test_data$Quality)
+polr_accuracy <- mean(polr_pred == test_data$Quality)
+cat("Multinominal accuracy：", mlogit_accuracy)
+cat("Ordinal accuracy：", polr_accuracy)
+```
+
+From the results above, we can see that two models show similar accuracy. And two models give similar prediction when using the same data, the different rate of two models predicting test data is only `` `r diff_rate` ``, which is small enough to show that the two models usually gives the same prediction. So we can say that we roughly	get	similar	conclusions	using	those	two	models.
